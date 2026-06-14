@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAppStore } from '../store/appStore';
 import './ImportWindow.css';
 
 export default function ImportWindow() {
-  const { importProgress, setImportProgress, setCurrentView, currentProject } = useAppStore();
+  const { importProgress, setImportProgress, setCurrentView, currentProject, patients, importAndGenerateData } = useAppStore();
+  const importCounterRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const [importedFolders, setImportedFolders] = useState<string[]>([]);
 
@@ -54,18 +55,29 @@ export default function ImportWindow() {
       if (progress >= 100) {
         progress = 100;
         clearInterval(interval);
+
+        const startIndex = importCounterRef.current * 6 + 100;
+        importCounterRef.current += 1;
+        const newPatients = importAndGenerateData(paths.length, startIndex);
+
+        const totalPatients = patients.length + newPatients.length;
+        const totalSeries = newPatients.reduce(
+          (sum, p) => sum + p.studies.reduce((s, study) => s + study.series.length, 0),
+          0
+        );
+
         setImportProgress({
           status: 'done',
           total: 100,
           current: 100,
-          message: '导入完成！发现 12 位患者，共 36 个序列',
+          message: `导入完成！本次新增 ${newPatients.length} 位患者，共 ${totalSeries} 个序列；总计 ${totalPatients} 位患者`,
           currentPath: '',
         });
         setTimeout(() => {
           if (currentProject) {
             setCurrentView('series');
           }
-        }, 1000);
+        }, 1500);
       } else {
         const statuses = ['scanning', 'parsing', 'grouping'] as const;
         const statusIndex = Math.floor(progress / 33);

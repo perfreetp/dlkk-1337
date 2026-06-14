@@ -4,7 +4,7 @@ import type { QCRule, QCCheckResult } from '../../shared/types';
 import './RuleChecker.css';
 
 export default function RuleChecker() {
-  const { qcRules, qcResults, toggleRule, runQCCheck, getAllSeries } = useAppStore();
+  const { qcRules, qcResults, toggleRule, runQCCheck, getAllSeries, patients } = useAppStore();
   const [isChecking, setIsChecking] = useState(false);
   const [selectedResult, setSelectedResult] = useState<QCCheckResult | null>(null);
 
@@ -157,23 +157,53 @@ export default function RuleChecker() {
                 <div className="affected-items">
                   <h5>受影响序列 ({selectedResult.affectedItems.length} 个)</h5>
                   <div className="items-list">
-                    {selectedResult.affectedItems.slice(0, 10).map((itemId) => {
+                    {selectedResult.affectedItems.slice(0, 15).map((itemId) => {
                       const series = allSeries.find((s) => s.id === itemId);
+                      const patient = series ? patients.find((p) => p.id === series.patientId) : null;
+                      const study = series ? patient?.studies.find((s) => s.id === series.studyId) : null;
+
+                      let issueDetail = '';
+                      if (selectedResult.ruleId === 'rule-1' && series) {
+                        issueDetail = '⚠️ 患者信息脱敏不完整';
+                      } else if (selectedResult.ruleId === 'rule-3' && series) {
+                        issueDetail = `⚠️ 缺失字段: ${series.missingFields.join('、')}`;
+                      } else if (selectedResult.ruleId === 'rule-2' && study) {
+                        issueDetail = `⚠️ 序列不完整 (应有3个，实际${study.series.length}个)`;
+                      } else if (selectedResult.ruleId === 'rule-4' && series) {
+                        const patientSeries = allSeries.filter((s) => s.patientId === series.patientId);
+                        const statuses = [...new Set(patientSeries.map((s) => s.enrollmentStatus))];
+                        const statusText: Record<string, string> = {
+                          pending: '待处理', included: '已入组', excluded: '已排除', review: '待复核'
+                        };
+                        issueDetail = `⚠️ 入组状态不一致: ${statuses.map((s) => statusText[s] || s).join('、')}`;
+                      }
+
                       return (
-                        <div key={itemId} className="item-row">
-                          <span className="item-icon">🖼️</span>
-                          <span className="item-name">
-                            {series?.seriesDescription || itemId}
-                          </span>
-                          <span className="item-patient">
-                            {series?.patientId || ''}
-                          </span>
+                        <div key={itemId} className="item-row with-detail">
+                          <div className="item-main">
+                            <span className="item-icon">
+                              {selectedResult.ruleId === 'rule-4' ? '⚠️' : '🖼️'}
+                            </span>
+                            <div className="item-text">
+                              <span className="item-name">
+                                {patient?.patientName || '未知患者'} ({series?.patientId || itemId})
+                              </span>
+                              <span className="item-series">
+                                {study?.studyDescription || ''} → {series?.seriesDescription || itemId}
+                              </span>
+                            </div>
+                          </div>
+                          {issueDetail && (
+                            <div className="item-issue">
+                              {issueDetail}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
-                    {selectedResult.affectedItems.length > 10 && (
+                    {selectedResult.affectedItems.length > 15 && (
                       <div className="items-more">
-                        ...还有 {selectedResult.affectedItems.length - 10} 个
+                        ...还有 {selectedResult.affectedItems.length - 15} 个受影响序列
                       </div>
                     )}
                   </div>

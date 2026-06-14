@@ -19,8 +19,61 @@ export default function TagEditor() {
   const [bulkResearchNumber, setBulkResearchNumber] = useState('');
   const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
   const [editingSeriesId, setEditingSeriesId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [singleFilterStatus, setSingleFilterStatus] = useState<string>('all');
+  const [singleSearchQuery, setSingleSearchQuery] = useState('');
 
   const allSeries = useMemo(() => getAllSeries(), [getAllSeries]);
+
+  const filteredSingleSeries = useMemo(() => {
+    let result = allSeries;
+
+    if (singleFilterStatus !== 'all') {
+      result = result.filter((s) => s.enrollmentStatus === singleFilterStatus);
+    }
+
+    if (singleSearchQuery.trim()) {
+      const query = singleSearchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.seriesDescription?.toLowerCase().includes(query) ||
+          s.patientId.toLowerCase().includes(query) ||
+          s.diseaseTags.some((t) => t.toLowerCase().includes(query))
+      );
+    }
+
+    return result;
+  }, [allSeries, singleFilterStatus, singleSearchQuery]);
+
+  const totalPages = Math.ceil(filteredSingleSeries.length / pageSize);
+  const paginatedSeries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredSingleSeries.slice(start, start + pageSize);
+  }, [filteredSingleSeries, currentPage, pageSize]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setEditingSeriesId(null);
+  };
+
+  const handleFilterChange = (status: string) => {
+    setSingleFilterStatus(status);
+    setCurrentPage(1);
+    setEditingSeriesId(null);
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSingleSearchQuery(query);
+    setCurrentPage(1);
+    setEditingSeriesId(null);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+    setEditingSeriesId(null);
+  };
 
   const targetSeries = useMemo(() => {
     if (selectedTagTarget === 'selected') {
@@ -387,16 +440,116 @@ export default function TagEditor() {
           </div>
         ) : (
           <div className="single-panel">
+            <div className="single-toolbar">
+              <div className="toolbar-left">
+                <div className="search-box">
+                  <span>🔍</span>
+                  <input
+                    type="text"
+                    placeholder="搜索患者、序列、标签..."
+                    value={singleSearchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
+                </div>
+                <select
+                  value={singleFilterStatus}
+                  onChange={(e) => handleFilterChange(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="all">全部状态</option>
+                  <option value="pending">待处理</option>
+                  <option value="included">已入组</option>
+                  <option value="excluded">已排除</option>
+                  <option value="review">待复核</option>
+                </select>
+              </div>
+              <div className="toolbar-right">
+                <span className="result-count">
+                  共 {filteredSingleSeries.length} 条序列
+                </span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="form-select"
+                >
+                  <option value="10">每页 10 条</option>
+                  <option value="20">每页 20 条</option>
+                  <option value="50">每页 50 条</option>
+                  <option value="100">每页 100 条</option>
+                </select>
+              </div>
+            </div>
+
             <div className="series-tag-list">
-              {allSeries.slice(0, 20).map((series) => (
-                <SeriesTagRow key={series.id} series={series} />
-              ))}
-              {allSeries.length > 20 && (
-                <div className="load-more">
-                  显示前 20 条，共 {allSeries.length} 条...
+              {paginatedSeries.length > 0 ? (
+                paginatedSeries.map((series) => (
+                  <SeriesTagRow key={series.id} series={series} />
+                ))
+              ) : (
+                <div className="empty-list">
+                  没有找到匹配的序列
                 </div>
               )}
             </div>
+
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="page-btn"
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1}
+                >
+                  首页
+                </button>
+                <button
+                  className="page-btn"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  上一页
+                </button>
+                <div className="page-numbers">
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 7) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 4) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 3) {
+                      pageNum = totalPages - 6 + i;
+                    } else {
+                      pageNum = currentPage - 3 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        className={`page-num ${currentPage === pageNum ? 'active' : ''}`}
+                        onClick={() => handlePageChange(pageNum)}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  className="page-btn"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  下一页
+                </button>
+                <button
+                  className="page-btn"
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  末页
+                </button>
+                <span className="page-info">
+                  第 {currentPage} / {totalPages} 页
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

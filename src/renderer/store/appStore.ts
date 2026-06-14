@@ -35,8 +35,10 @@ interface AppState {
   setCurrentProject: (project: Project | null) => void;
 
   addPatients: (patients: Patient[]) => void;
+  importAndGenerateData: (folderCount: number, startIndex?: number) => Patient[];
   updatePatient: (patientId: string, updates: Partial<Patient>) => void;
   setSelectedPatient: (patientId: string | null) => void;
+  clearSelectedPatient: () => void;
   setSelectedStudy: (studyId: string | null) => void;
   toggleSelectSeries: (seriesId: string) => void;
   selectAllSeries: () => void;
@@ -124,13 +126,13 @@ const mockProjects: Project[] = [
   },
 ];
 
-const generateMockData = (): Patient[] => {
+const generateMockData = (count: number = 12, startIndex: number = 1): Patient[] => {
   const patients: Patient[] = [];
   const diseases = ['肺癌', '肺结节', '肺炎', '正常'];
   const statuses: EnrollmentStatus[] = ['pending', 'included', 'excluded', 'review'];
   const qcResults: QCConclusion[] = ['pass', 'fail', 'pending', 'rework'];
 
-  for (let i = 1; i <= 12; i++) {
+  for (let i = startIndex; i < startIndex + count; i++) {
     const patientId = `PAT${String(i).padStart(4, '0')}`;
     const patient: Patient = {
       id: patientId,
@@ -270,6 +272,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
+  importAndGenerateData: (folderCount, startIndex = 1) => {
+    const state = get();
+    const patientCount = Math.min(folderCount * 2, 8);
+    const newPatients = generateMockData(patientCount, startIndex);
+    const existingIds = new Set(state.patients.map((p) => p.id));
+    const toAdd = newPatients.filter((p) => !existingIds.has(p.id));
+    set((state) => ({ patients: [...state.patients, ...toAdd] }));
+    return toAdd;
+  },
+
   updatePatient: (patientId, updates) => {
     set((state) => ({
       patients: state.patients.map((p) =>
@@ -280,6 +292,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setSelectedPatient: (patientId) =>
     set({ selectedPatientId: patientId, selectedStudyId: null, selectedSeriesIds: [] }),
+
+  clearSelectedPatient: () =>
+    set({ selectedPatientId: null, selectedStudyId: null, selectedSeriesIds: [] }),
 
   setSelectedStudy: (studyId) =>
     set({ selectedStudyId: studyId, selectedSeriesIds: [] }),
@@ -362,50 +377,112 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   runQCCheck: () => {
-    const allSeries = get().getAllSeries();
+    const state = get();
+    const allSeries = state.getAllSeries();
+    const enabledRules = state.qcRules.filter((r) => r.enabled);
+    const enabledRuleIds = new Set(enabledRules.map((r) => r.id));
     const results: QCCheckResult[] = [];
 
-    const desensitizationFails = allSeries.filter((s) => !s.desensitizationCheck);
-    results.push({
-      ruleId: 'rule-1',
-      ruleName: '患者信息脱敏检查',
-      passed: desensitizationFails.length === 0,
-      message:
-        desensitizationFails.length === 0
-          ? '所有序列脱敏检查通过'
-          : `发现 ${desensitizationFails.length} 个序列脱敏不完整`,
-      affectedItems: desensitizationFails.map((s) => s.id),
-    });
+    if (enabledRuleIds.has('rule-1')) {
+      const desensitizationFails = allSeries.filter((s) => !s.desensitizationCheck);
+      const patientNames = desensitizationFails.map((s) => {
+        const patient = state.patients.find((p) => p.id === s.patientId);
+        return patient ? `${patient.patientName} (${s.patientId})` : s.patientId;
+      });
+      results.push({
+        ruleId: 'rule-1',
+        ruleName: '患者信息脱敏检查',
+        passed: desensitizationFails.length === 0,
+        message:
+          desensitizationFails.length === 0
+            ? '所有序列脱敏检查通过'
+            : `发现 ${desensitizationFails.length} 个序列脱敏不完整：${patientNames.slice(0, 3).join('、')}${patientNames.length > 3 ? '...' : ''}`,
+        affectedItems: desensitizationFails.map((s) => s.id),
+      });
+    }
 
-    const completenessFails = allSeries.filter((s) => s.missingFields.length > 0);
-    results.push({
-      ruleId: 'rule-3',
-      ruleName: '字段完整性检查',
-      passed: completenessFails.length === 0,
-      message:
-        completenessFails.length === 0
-          ? '所有字段填写完整'
-          : `发现 ${completenessFails.length} 个序列存在缺失字段`,
-      affectedItems: completenessFails.map((s) => s.id),
-    });
+    if (enabledRuleIds.has('rule-3')) {
+      const completenessFails = allSeries.filter((s) => s.missingFields.length > 0);
+      const details = completenessFails.map((s) => {
+        const patient = state.patients.find((p) => p.id === s.patientId);
+        const patientName = patient ? patient.patientName : s.patientId;
+        return `${patientName} - ${s.seriesDescription} 缺少: ${s.missingFields.join('、')}`;
+      });
+      results.push({
+        ruleId: 'rule-3',
+        ruleName: '字段完整性检查',
+        passed: completenessFails.length === 0,
+        message:
+          completenessFails.length === 0
+            ? '所有字段填写完整'
+            : `发现 ${completenessFails.length} 个序列存在缺失字段：${details.slice(0, 2).join('；')}${details.length > 2 ? '...' : ''}`,
+        affectedItems: completenessFails.map((s) => s.id),
+      });
+    }
 
-    let missingSeriesCount = 0;
-    get().patients.forEach((p) => {
-      p.studies.forEach((study) => {
-        if (study.series.length < 3) {
-          missingSeriesCount++;
+    if (enabledRuleIds.has('rule-2')) {
+      const missingSeriesStudies: string[] = [];
+      const affectedSeriesIds: string[] = [];
+      state.patients.forEach((p) => {
+        p.studies.forEach((study) => {
+          if (study.series.length < 3) {
+            missingSeriesStudies.push(`${p.patientName} - ${study.studyDescription} (仅${study.series.length}个序列)`);
+            study.series.forEach((s) => affectedSeriesIds.push(s.id));
+          }
+        });
+      });
+      results.push({
+        ruleId: 'rule-2',
+        ruleName: '序列完整性检查',
+        passed: missingSeriesStudies.length === 0,
+        message:
+          missingSeriesStudies.length === 0
+            ? '所有检查序列齐全'
+            : `发现 ${missingSeriesStudies.length} 个检查存在序列缺失：${missingSeriesStudies.slice(0, 2).join('；')}${missingSeriesStudies.length > 2 ? '...' : ''}`,
+        affectedItems: affectedSeriesIds,
+      });
+    }
+
+    if (enabledRuleIds.has('rule-4')) {
+      const inconsistentPatients: string[] = [];
+      const affectedSeriesIds: string[] = [];
+      state.patients.forEach((patient) => {
+        const patientSeries = allSeries.filter((s) => s.patientId === patient.id);
+        if (patientSeries.length > 0) {
+          const firstStatus = patientSeries[0].enrollmentStatus;
+          const hasInconsistent = patientSeries.some((s) => s.enrollmentStatus !== firstStatus);
+          if (hasInconsistent) {
+            const statusMap = new Map<string, number>();
+            patientSeries.forEach((s) => {
+              statusMap.set(s.enrollmentStatus, (statusMap.get(s.enrollmentStatus) || 0) + 1);
+            });
+            const statusDetails = Array.from(statusMap.entries())
+              .map(([status, count]) => {
+                const statusText: Record<string, string> = {
+                  pending: '待处理',
+                  included: '已入组',
+                  excluded: '已排除',
+                  review: '待复核',
+                };
+                return `${statusText[status] || status}(${count}个)`;
+              })
+              .join('、');
+            inconsistentPatients.push(`${patient.patientName} (${patient.patientId}): ${statusDetails}`);
+            patientSeries.forEach((s) => affectedSeriesIds.push(s.id));
+          }
         }
       });
-    });
-    results.push({
-      ruleId: 'rule-2',
-      ruleName: '序列完整性检查',
-      passed: missingSeriesCount === 0,
-      message:
-        missingSeriesCount === 0
-          ? '所有检查序列齐全'
-          : `发现 ${missingSeriesCount} 个检查存在序列缺失`,
-    });
+      results.push({
+        ruleId: 'rule-4',
+        ruleName: '入组状态一致性',
+        passed: inconsistentPatients.length === 0,
+        message:
+          inconsistentPatients.length === 0
+            ? '所有患者入组状态一致'
+            : `发现 ${inconsistentPatients.length} 位患者入组状态不一致：${inconsistentPatients.slice(0, 2).join('；')}${inconsistentPatients.length > 2 ? '...' : ''}`,
+        affectedItems: affectedSeriesIds,
+      });
+    }
 
     set({ qcResults: results });
   },
@@ -465,6 +542,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   getFilteredSeries: () => {
     const state = get();
     let series = state.getAllSeries();
+
+    if (state.selectedPatientId) {
+      series = series.filter((s) => s.patientId === state.selectedPatientId);
+    }
 
     if (state.searchQuery) {
       const query = state.searchQuery.toLowerCase();

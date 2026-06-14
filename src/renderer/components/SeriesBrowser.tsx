@@ -12,6 +12,7 @@ export default function SeriesBrowser() {
     selectedStudyId,
     selectedSeriesIds,
     setSelectedPatient,
+    clearSelectedPatient,
     setSelectedStudy,
     toggleSelectSeries,
     selectAllSeries,
@@ -23,6 +24,7 @@ export default function SeriesBrowser() {
     sortBy,
     setSortBy,
     getFilteredSeries,
+    getAllSeries,
   } = useAppStore();
 
   const [groupBy, setGroupBy] = useState<GroupBy>('patient');
@@ -221,6 +223,17 @@ export default function SeriesBrowser() {
             <span className="patient-count">{patients.length} 位</span>
           </div>
           <div className="patient-list">
+            <div
+              className={`patient-item ${!selectedPatientId ? 'active all-patients' : 'all-patients'}`}
+              onClick={clearSelectedPatient}
+            >
+              <div className="patient-avatar">📋</div>
+              <div className="patient-info">
+                <div className="patient-name">全部患者</div>
+                <div className="patient-id">显示所有序列</div>
+              </div>
+              <span className="research-badge">{getAllSeries().length}</span>
+            </div>
             {patients.map((patient) => (
               <div
                 key={patient.id}
@@ -244,6 +257,14 @@ export default function SeriesBrowser() {
           <div className="selection-bar">
             <span>
               已选择 <strong>{selectedSeriesIds.length}</strong> 个序列
+              {selectedPatientId && (
+                <span className="filter-indicator">
+                  · 正在筛选: <strong>{getPatientById(selectedPatientId)?.patientName}</strong>
+                  <button className="clear-filter-btn" onClick={clearSelectedPatient}>
+                    × 清除筛选
+                  </button>
+                </span>
+              )}
             </span>
             <div className="selection-actions">
               <button className="btn btn-sm" onClick={selectAllSeries}>

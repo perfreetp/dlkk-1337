@@ -119,6 +119,21 @@
   border: 1px solid var(--primary-color);
 }
 
+.patient-item.all-patients {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+}
+
+.patient-item.all-patients:hover {
+  border-color: var(--primary-color);
+}
+
+.patient-item.all-patients.active {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: var(--primary-color);
+}
+
 .patient-avatar {
   font-size: 28px;
 }
@@ -171,6 +186,28 @@
   margin-bottom: 12px;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.filter-indicator {
+  margin-left: 12px;
+  color: var(--primary-color);
+  font-size: 12px;
+}
+
+.clear-filter-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-filter-btn:hover {
+  background: #dc2626;
 }
 
 .selection-actions {

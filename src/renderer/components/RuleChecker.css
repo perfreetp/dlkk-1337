@@ -293,19 +293,62 @@ input:checked + .slider:before {
   background: var(--bg-hover);
 }
 
+.item-row.with-detail {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.item-row.with-detail:last-child {
+  border-bottom: none;
+}
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
 .item-icon {
   font-size: 18px;
+  flex-shrink: 0;
+}
+
+.item-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .item-name {
-  flex: 1;
   font-size: 13px;
+  font-weight: 500;
   color: var(--text-primary);
+}
+
+.item-series {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .item-patient {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.item-issue {
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 6px 10px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  width: 100%;
+  border-left: 3px solid #ef4444;
 }
 
 .items-more {

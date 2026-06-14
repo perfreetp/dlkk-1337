@@ -110,6 +110,54 @@
   font-size: 13px;
 }
 
+.item-collab {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.collab-assignee {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.collab-status {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.collab-status.cs-unassigned {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.collab-status.cs-in_progress {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.collab-status.cs-needs_review {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.collab-status.cs-done {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.rule-filter-banner {
+  margin: 0 0 16px;
+  grid-column: 1 / -1;
+}
+
 .rules-list {
   flex: 1;
   overflow-y: auto;

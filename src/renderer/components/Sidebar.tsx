@@ -5,6 +5,7 @@ const menuItems = [
   { id: 'project', icon: '📋', label: '项目窗口', key: 'project' },
   { id: 'import', icon: '📥', label: '导入窗口', key: 'import' },
   { id: 'dashboard', icon: '📊', label: '处理进度', key: 'dashboard' },
+  { id: 'collaboration', icon: '👥', label: '项目协作', key: 'collaboration' },
   { id: 'series', icon: '🖼️', label: '序列浏览', key: 'series' },
   { id: 'tags', icon: '🏷️', label: '标签编辑', key: 'tags' },
   { id: 'rules', icon: '✅', label: '规则检查', key: 'rules' },
@@ -16,7 +17,7 @@ export default function Sidebar() {
   const { currentView, setCurrentView, currentProject, patients, getAllSeries } = useAppStore();
 
   const disabledItems = !currentProject
-    ? ['dashboard', 'series', 'tags', 'rules', 'review', 'export']
+    ? ['dashboard', 'collaboration', 'series', 'tags', 'rules', 'review', 'export']
     : [];
 
   const totalSeries = currentProject ? getAllSeries().length : 0;

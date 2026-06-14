@@ -11,10 +11,13 @@ export default function RuleChecker() {
     runQCCheck,
     getAllSeries,
     patients,
+    selectedPatientId,
+    selectedResearchNumber,
     setCurrentView,
     setSelectedPatient,
     navigateToSeries,
     setPendingTagEditSeries,
+    getFilteredPatients,
   } = useAppStore();
   const [isChecking, setIsChecking] = useState(false);
   const [selectedResult, setSelectedResult] = useState<QCCheckResult | null>(null);
@@ -35,6 +38,16 @@ export default function RuleChecker() {
       if (firstFail) setSelectedResult(firstFail);
     }
   }, [qcResults]);
+
+  useEffect(() => {
+    if (selectedResearchNumber) {
+      setResearchFilter(selectedResearchNumber);
+      setPatientFilter('all');
+    } else if (selectedPatientId) {
+      setPatientFilter(selectedPatientId);
+      setResearchFilter('all');
+    }
+  }, [selectedPatientId, selectedResearchNumber]);
 
   useEffect(() => {
     if (selectedResult) {
@@ -176,6 +189,29 @@ export default function RuleChecker() {
       </div>
 
       <div className="checker-summary">
+        {(selectedResearchNumber || selectedPatientId) && (
+          <div className="filter-banner rule-filter-banner">
+            <span>
+              正在筛选:
+              {selectedResearchNumber && <strong> 🔬 研究编号 {selectedResearchNumber}</strong>}
+              {selectedPatientId && (
+                <strong>
+                  {' '}👤 {getFilteredPatients().find((p) => p.id === selectedPatientId)?.patientName || selectedPatientId}
+                </strong>
+              )}
+            </span>
+            <button
+              className="clear-filter-btn"
+              onClick={() => {
+                const { setSelectedPatient, clearSelectedPatient, clearSelectedResearchNumber } = useAppStore.getState();
+                clearSelectedPatient();
+                clearSelectedResearchNumber();
+              }}
+            >
+              × 清除筛选
+            </button>
+          </div>
+        )}
         <div className="summary-card total">
           <div className="summary-icon">📊</div>
           <div className="summary-info">
@@ -378,6 +414,8 @@ export default function RuleChecker() {
                       const patient = series ? patients.find((p) => p.id === series.patientId) : null;
                       const study = series ? patient?.studies.find((s) => s.id === series.studyId) : null;
                       const issueDetail = getIssueDetail(selectedResult, itemId);
+                      const collabStatus = series?.collaboration?.status;
+                      const collabAssignee = series?.collaboration?.assignee;
 
                       return (
                         <div key={itemId} className="item-row with-detail clickable"
@@ -394,6 +432,19 @@ export default function RuleChecker() {
                               <span className="item-series">
                                 {study?.studyDescription || ''} → {series?.seriesDescription || itemId}
                               </span>
+                              {(collabStatus || collabAssignee) && (
+                                <span className="item-collab">
+                                  {collabAssignee && <span className="collab-assignee">👤 {collabAssignee}</span>}
+                                  {collabStatus && (
+                                    <span className={`collab-status cs-${collabStatus}`}>
+                                      {collabStatus === 'unassigned' && '未分配'}
+                                      {collabStatus === 'in_progress' && '处理中'}
+                                      {collabStatus === 'needs_review' && '待复核'}
+                                      {collabStatus === 'done' && '已完成'}
+                                    </span>
+                                  )}
+                                </span>
+                              )}
                             </div>
                           </div>
                           {issueDetail && (

@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import ProjectWindow from './components/ProjectWindow';
 import ImportWindow from './components/ImportWindow';
 import Dashboard from './components/Dashboard';
+import Collaboration from './components/Collaboration';
 import SeriesBrowser from './components/SeriesBrowser';
 import TagEditor from './components/TagEditor';
 import RuleChecker from './components/RuleChecker';
@@ -32,6 +33,8 @@ export default function App() {
         return <ImportWindow />;
       case 'dashboard':
         return <Dashboard />;
+      case 'collaboration':
+        return <Collaboration />;
       case 'series':
         return <SeriesBrowser />;
       case 'tags':

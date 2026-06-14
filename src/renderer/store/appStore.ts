@@ -11,6 +11,7 @@ import type {
   QCCheckResult,
   QCReviewRecord,
   ImportProgress,
+  SeriesCollaboration,
 } from '../../shared/types';
 
 const STORAGE_KEY = 'dicom-qc-projects';
@@ -75,6 +76,7 @@ interface AppState {
   selectedStudyId: string | null;
   selectedSeriesIds: string[];
   highlightedSeriesId: string | null;
+  selectedResearchNumber: string | null;
   importProgress: ImportProgress;
   qcRules: QCRule[];
   qcResults: QCCheckResult[];
@@ -97,6 +99,8 @@ interface AppState {
   setHighlightedSeries: (seriesId: string | null) => void;
   setPendingTagEditSeries: (seriesIds: string[]) => void;
   clearPendingTagEditSeries: () => void;
+  setSelectedResearchNumber: (rn: string | null) => void;
+  clearSelectedResearchNumber: () => void;
 
   addPatients: (patients: Patient[]) => void;
   importAndGenerateData: (folderCount: number, startIndex?: number) => Patient[];
@@ -110,6 +114,8 @@ interface AppState {
 
   updateSeries: (seriesId: string, updates: Partial<Series>) => void;
   batchUpdateSeries: (seriesIds: string[], updates: Partial<Series>) => void;
+  updateCollaboration: (seriesId: string, updates: Partial<SeriesCollaboration>) => void;
+  batchUpdateCollaboration: (seriesIds: string[], updates: Partial<SeriesCollaboration>) => void;
   setEnrollmentStatus: (seriesId: string, status: EnrollmentStatus) => void;
   addDiseaseTag: (seriesId: string, tag: string) => void;
   removeDiseaseTag: (seriesId: string, tag: string) => void;
@@ -131,6 +137,7 @@ interface AppState {
   setSortBy: (sortBy: string) => void;
 
   getFilteredSeries: () => Series[];
+  getFilteredPatients: () => Patient[];
   getAllSeries: () => Series[];
 }
 
@@ -256,6 +263,12 @@ const generateMockData = (count: number = 12, startIndex: number = 1): Patient[]
           qcTime: (i + k) % 3 === 0 ? '2024-03-15T10:00:00Z' : undefined,
           desensitizationCheck: (i + k) % 4 !== 0,
           missingFields: (i + k) % 4 === 0 ? ['patientBirthDate'] : [],
+          collaboration: {
+            status: ['unassigned', 'in_progress', 'needs_review', 'done'][(i + k) % 4] as any,
+            assignee: (i + k) % 4 === 0 ? undefined : ['张医生', '李医生', '王医生'][k % 3],
+            lastUpdatedAt: (i + k) % 4 === 3 ? '2024-03-15T10:00:00Z' : undefined,
+            lastUpdatedBy: (i + k) % 4 === 3 ? '系统' : undefined,
+          },
         };
         study.series.push(series);
       }
@@ -295,6 +308,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sortBy: 'patientId',
   isDataDirty: false,
   pendingTagEditSeriesIds: [],
+  selectedResearchNumber: null,
 
   setCurrentView: (view) => set({ currentView: view }),
 
@@ -306,6 +320,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ pendingTagEditSeriesIds: seriesIds, selectedSeriesIds: seriesIds }),
 
   clearPendingTagEditSeries: () => set({ pendingTagEditSeriesIds: [] }),
+
+  setSelectedResearchNumber: (rn) => set({ selectedResearchNumber: rn }),
+
+  clearSelectedResearchNumber: () => set({ selectedResearchNumber: null, selectedPatientId: null }),
 
   navigateToSeries: (seriesId, targetView = 'series') => {
     const state = get();
@@ -496,13 +514,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearSelection: () => set({ selectedSeriesIds: [] }),
 
   updateSeries: (seriesId, updates) => {
+    const now = new Date().toISOString();
+    const collabUpdates: Partial<Series> = {};
+    if (updates.enrollmentStatus || updates.notes || updates.diseaseTags) {
+      const existing = get().getAllSeries().find((s) => s.id === seriesId);
+      collabUpdates.collaboration = {
+        ...(existing?.collaboration || { status: 'unassigned' as const }),
+        lastUpdatedAt: now,
+      };
+    }
     set((state) => ({
       patients: state.patients.map((patient) => ({
         ...patient,
         studies: patient.studies.map((study) => ({
           ...study,
           series: study.series.map((series) =>
-            series.id === seriesId ? { ...series, ...updates } : series
+            series.id === seriesId ? { ...series, ...updates, ...collabUpdates } : series
           ),
         })),
       })),
@@ -514,13 +541,84 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   batchUpdateSeries: (seriesIds, updates) => {
+    const now = new Date().toISOString();
+    const hasStatusOrTags = updates.enrollmentStatus || updates.notes || updates.diseaseTags;
     set((state) => ({
       patients: state.patients.map((patient) => ({
         ...patient,
         studies: patient.studies.map((study) => ({
           ...study,
           series: study.series.map((series) =>
-            seriesIds.includes(series.id) ? { ...series, ...updates } : series
+            seriesIds.includes(series.id)
+              ? {
+                  ...series,
+                  ...updates,
+                  ...(hasStatusOrTags
+                    ? {
+                        collaboration: {
+                          ...(series.collaboration || { status: 'unassigned' as const }),
+                          lastUpdatedAt: now,
+                        },
+                      }
+                    : {}),
+                }
+              : series
+          ),
+        })),
+      })),
+      isDataDirty: true,
+    }));
+    if (get().currentProject) {
+      setTimeout(() => get().saveProject(), 100);
+    }
+  },
+
+  updateCollaboration: (seriesId, updates) => {
+    const now = new Date().toISOString();
+    set((state) => ({
+      patients: state.patients.map((patient) => ({
+        ...patient,
+        studies: patient.studies.map((study) => ({
+          ...study,
+          series: study.series.map((series) =>
+            series.id === seriesId
+              ? {
+                  ...series,
+                  collaboration: {
+                    ...(series.collaboration || { status: 'unassigned' as const }),
+                    ...updates,
+                    lastUpdatedAt: now,
+                  },
+                }
+              : series
+          ),
+        })),
+      })),
+      isDataDirty: true,
+    }));
+    if (get().currentProject) {
+      setTimeout(() => get().saveProject(), 100);
+    }
+  },
+
+  batchUpdateCollaboration: (seriesIds, updates) => {
+    const now = new Date().toISOString();
+    set((state) => ({
+      patients: state.patients.map((patient) => ({
+        ...patient,
+        studies: patient.studies.map((study) => ({
+          ...study,
+          series: study.series.map((series) =>
+            seriesIds.includes(series.id)
+              ? {
+                  ...series,
+                  collaboration: {
+                    ...(series.collaboration || { status: 'unassigned' as const }),
+                    ...updates,
+                    lastUpdatedAt: now,
+                  },
+                }
+              : series
           ),
         })),
       })),
@@ -732,7 +830,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     let series = state.getAllSeries();
 
-    if (state.selectedPatientId) {
+    if (state.selectedResearchNumber) {
+      const matchingPatientIds = state.patients
+        .filter((p) => p.researchNumber === state.selectedResearchNumber)
+        .map((p) => p.id);
+      series = series.filter((s) => matchingPatientIds.includes(s.patientId));
+    } else if (state.selectedPatientId) {
       series = series.filter((s) => s.patientId === state.selectedPatientId);
     }
 
@@ -751,6 +854,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     return series;
+  },
+
+  getFilteredPatients: () => {
+    const state = get();
+    if (!state.selectedResearchNumber) return state.patients;
+    return state.patients
+      .filter((p) => p.researchNumber === state.selectedResearchNumber)
+      .map((p) => ({ ...p }))
+      .filter((p) => p.studies.length > 0);
   },
 
   getAllSeries: () => {

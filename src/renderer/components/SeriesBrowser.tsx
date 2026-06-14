@@ -12,8 +12,11 @@ export default function SeriesBrowser() {
     selectedStudyId,
     selectedSeriesIds,
     highlightedSeriesId,
+    selectedResearchNumber,
     setSelectedPatient,
     clearSelectedPatient,
+    setSelectedResearchNumber,
+    clearSelectedResearchNumber,
     setSelectedStudy,
     toggleSelectSeries,
     selectAllSeries,
@@ -25,6 +28,7 @@ export default function SeriesBrowser() {
     sortBy,
     setSortBy,
     getFilteredSeries,
+    getFilteredPatients,
     getAllSeries,
     setCurrentView,
     setHighlightedSeries,
@@ -43,7 +47,7 @@ export default function SeriesBrowser() {
   }, [getFilteredSeries, searchQuery, filterStatus, sortBy]);
 
   const getPatientById = (id: string): Patient | undefined => {
-    return patients.find((p) => p.id === id);
+    return getFilteredPatients().find((p) => p.id === id);
   };
 
   const getStudyById = (patientId: string, studyId: string): Study | undefined => {
@@ -240,12 +244,23 @@ export default function SeriesBrowser() {
         <div className="patient-sidebar">
           <div className="sidebar-header">
             <h3>患者列表</h3>
-            <span className="patient-count">{patients.length} 位</span>
+            <span className="patient-count">{getFilteredPatients().length} 位</span>
           </div>
+          {selectedResearchNumber && (
+            <div className="filter-banner">
+              <span>🔬 研究编号: <strong>{selectedResearchNumber}</strong></span>
+              <button className="clear-filter-btn" onClick={clearSelectedResearchNumber}>
+                ×
+              </button>
+            </div>
+          )}
           <div className="patient-list">
             <div
-              className={`patient-item ${!selectedPatientId ? 'active all-patients' : 'all-patients'}`}
-              onClick={clearSelectedPatient}
+              className={`patient-item ${!selectedPatientId && !selectedResearchNumber ? 'active all-patients' : 'all-patients'}`}
+              onClick={() => {
+                clearSelectedPatient();
+                clearSelectedResearchNumber();
+              }}
             >
               <div className="patient-avatar">📋</div>
               <div className="patient-info">
@@ -254,7 +269,7 @@ export default function SeriesBrowser() {
               </div>
               <span className="research-badge">{getAllSeries().length}</span>
             </div>
-            {patients.map((patient) => (
+            {getFilteredPatients().map((patient) => (
               <div
                 key={patient.id}
                 className={`patient-item ${selectedPatientId === patient.id ? 'active' : ''}`}
@@ -277,10 +292,19 @@ export default function SeriesBrowser() {
           <div className="selection-bar">
             <span>
               已选择 <strong>{selectedSeriesIds.length}</strong> 个序列
-              {selectedPatientId && (
+              {(selectedResearchNumber || selectedPatientId) && (
                 <span className="filter-indicator">
-                  · 正在筛选: <strong>{getPatientById(selectedPatientId)?.patientName}</strong>
-                  <button className="clear-filter-btn" onClick={clearSelectedPatient}>
+                  · 正在筛选:
+                  {selectedResearchNumber && (
+                    <strong> 🔬 {selectedResearchNumber}</strong>
+                  )}
+                  {selectedPatientId && (
+                    <strong> 👤 {getPatientById(selectedPatientId)?.patientName}</strong>
+                  )}
+                  <button className="clear-filter-btn" onClick={() => {
+                    clearSelectedPatient();
+                    clearSelectedResearchNumber();
+                  }}>
                     × 清除筛选
                   </button>
                 </span>

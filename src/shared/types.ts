@@ -2,6 +2,15 @@ export type EnrollmentStatus = 'pending' | 'included' | 'excluded' | 'review';
 
 export type QCConclusion = 'pass' | 'fail' | 'pending' | 'rework';
 
+export type CollaborationStatus = 'unassigned' | 'in_progress' | 'needs_review' | 'done';
+
+export interface SeriesCollaboration {
+  assignee?: string;
+  status: CollaborationStatus;
+  lastUpdatedAt?: string;
+  lastUpdatedBy?: string;
+}
+
 export interface PatientInfo {
   patientId: string;
   patientName: string;
@@ -47,6 +56,7 @@ export interface Series extends SeriesInfo {
   qcTime?: string;
   desensitizationCheck: boolean;
   missingFields: string[];
+  collaboration: SeriesCollaboration;
 }
 
 export interface Study extends StudyInfo {

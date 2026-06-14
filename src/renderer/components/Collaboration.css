@@ -1,0 +1,267 @@
+.collaboration {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.collab-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selection-hint {
+  font-size: 12px;
+  color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.collab-overview {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.collab-stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.collab-stat-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.collab-stat-card.cs-in_progress {
+  border-left: 3px solid #2563eb;
+}
+
+.collab-stat-card.cs-needs_review {
+  border-left: 3px solid #d97706;
+}
+
+.collab-stat-card.cs-done {
+  border-left: 3px solid #059669;
+}
+
+.collab-stat-card.cs-unassigned {
+  border-left: 3px solid #64748b;
+}
+
+.collab-stat-card .stat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.collab-stat-card .stat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.collab-stat-card .stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.collab-stat-card .stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.collab-toolbar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.collab-filter-banner {
+  margin: 0;
+}
+
+.collab-toolbar > .toolbar-left,
+.collab-toolbar > .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.collab-toolbar > .toolbar-left {
+  flex: 1;
+}
+
+.collab-toolbar > .toolbar-right {
+  justify-content: flex-end;
+}
+
+.bulk-assign-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-color);
+}
+
+.bulk-assign-bar .form-select {
+  width: auto;
+  min-width: 100px;
+}
+
+.form-select.small {
+  padding: 3px 8px;
+  font-size: 12px;
+  height: 28px;
+}
+
+.collab-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+}
+
+.collab-row {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.collab-row:hover {
+  border-color: var(--primary-color);
+  background: var(--bg-tertiary);
+}
+
+.collab-row.selected {
+  border-color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.collab-checkbox {
+  flex-shrink: 0;
+}
+
+.collab-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.collab-title {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.collab-title strong {
+  font-weight: 600;
+}
+
+.collab-id {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.collab-series {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.collab-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.collab-assignee-inline {
+  color: var(--text-secondary);
+}
+
+.collab-time {
+  color: var(--text-muted);
+}
+
+.collab-quick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.empty-collab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
+
+.empty-collab .empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-collab p {
+  font-size: 14px;
+}
+
+.collab-status {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.collab-status.cs-unassigned {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.collab-status.cs-in_progress {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.collab-status.cs-needs_review {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.collab-status.cs-done {
+  background: #d1fae5;
+  color: #059669;
+}

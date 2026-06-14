@@ -9,6 +9,7 @@ export default function TagEditor() {
     selectedSeriesIds,
     selectedPatientId,
     highlightedSeriesId,
+    selectedResearchNumber,
     pendingTagEditSeriesIds,
     batchUpdateSeries,
     updateSeries,
@@ -16,15 +17,21 @@ export default function TagEditor() {
     patients,
     setSelectedPatient,
     clearSelectedPatient,
+    setSelectedResearchNumber,
+    clearSelectedResearchNumber,
     setHighlightedSeries,
     clearPendingTagEditSeries,
     setCurrentView,
+    runQCCheck,
+    getFilteredPatients,
   } = useAppStore();
 
   const [selectedTagTarget, setSelectedTagTarget] = useState<string>('selected');
   const [newDiseaseTag, setNewDiseaseTag] = useState('');
   const [bulkStatus, setBulkStatus] = useState<EnrollmentStatus>('pending');
   const [bulkResearchNumber, setBulkResearchNumber] = useState('');
+  const [bulkNotes, setBulkNotes] = useState('');
+  const [bulkNotesMode, setBulkNotesMode] = useState<'replace' | 'append'>('append');
   const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
   const [editingSeriesId, setEditingSeriesId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,7 +86,12 @@ export default function TagEditor() {
   const filteredSingleSeries = useMemo(() => {
     let result = allSeries;
 
-    if (singleFilterPatient !== 'all') {
+    if (selectedResearchNumber) {
+      const matchingPatientIds = patients
+        .filter((p) => p.researchNumber === selectedResearchNumber)
+        .map((p) => p.id);
+      result = result.filter((s) => matchingPatientIds.includes(s.patientId));
+    } else if (singleFilterPatient !== 'all') {
       result = result.filter((s) => s.patientId === singleFilterPatient);
     }
 
@@ -98,7 +110,7 @@ export default function TagEditor() {
     }
 
     return result;
-  }, [allSeries, singleFilterPatient, singleFilterStatus, singleSearchQuery]);
+  }, [allSeries, singleFilterPatient, singleFilterStatus, singleSearchQuery, selectedResearchNumber]);
 
   const totalPages = Math.ceil(filteredSingleSeries.length / pageSize);
   const paginatedSeries = useMemo(() => {
@@ -174,6 +186,21 @@ export default function TagEditor() {
         updateSeries(id, { diseaseTags: series.diseaseTags.filter((t) => t !== tag) });
       }
     });
+  };
+
+  const handleBulkNotesChange = () => {
+    if (!bulkNotes.trim()) return;
+    const ids = targetSeries.filter((s) => !s.isLocked).map((s) => s.id);
+    ids.forEach((id) => {
+      const series = allSeries.find((s) => s.id === id);
+      if (series) {
+        const newNotes = bulkNotesMode === 'append' && series.notes
+          ? `${series.notes}\n${bulkNotes.trim()}`
+          : bulkNotes.trim();
+        updateSeries(id, { notes: newNotes });
+      }
+    });
+    setBulkNotes('');
   };
 
   const getStatusColor = (status: string): string => {
@@ -258,6 +285,21 @@ export default function TagEditor() {
           <div className="series-basic">
             <span className="series-name">{series.seriesDescription}</span>
             <span className="series-patient">{series.patientId}</span>
+            {(series.collaboration?.assignee || series.collaboration?.status) && (
+              <span className="row-collab">
+                {series.collaboration?.assignee && (
+                  <span className="collab-assignee">👤 {series.collaboration.assignee}</span>
+                )}
+                {series.collaboration?.status && (
+                  <span className={`collab-status cs-${series.collaboration.status}`}>
+                    {series.collaboration.status === 'unassigned' && '未分配'}
+                    {series.collaboration.status === 'in_progress' && '处理中'}
+                    {series.collaboration.status === 'needs_review' && '待复核'}
+                    {series.collaboration.status === 'done' && '已完成'}
+                  </span>
+                )}
+              </span>
+            )}
           </div>
           <div
             className="status-badge"
@@ -364,9 +406,19 @@ export default function TagEditor() {
           </button>
           <button
             className={activeTab === 'batch' ? 'active' : ''}
-            onClick={() => setActiveTab('batch')}
+            onClick={() => {
+              if (selectedSeriesIds.length === 0 && selectedResearchNumber) {
+                setSelectedTagTarget('currentPatient');
+              } else if (selectedSeriesIds.length > 0) {
+                setSelectedTagTarget('selected');
+              }
+              setActiveTab('batch');
+            }}
           >
             批量修改
+            {selectedSeriesIds.length > 0 && (
+              <span className="tab-badge">{selectedSeriesIds.length}</span>
+            )}
           </button>
         </div>
       </div>
@@ -405,6 +457,16 @@ export default function TagEditor() {
                   改完后可返回规则检查继续查看问题处理情况
                 </span>
                 <div className="notice-actions">
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => {
+                      runQCCheck && runQCCheck();
+                      clearPendingTagEditSeries();
+                      setCurrentView('rules');
+                    }}
+                  >
+                    ✅ 处理完成并检查
+                  </button>
                   <button
                     className="btn btn-sm"
                     onClick={() => {
@@ -509,6 +571,44 @@ export default function TagEditor() {
               </div>
 
               <div className="batch-section">
+                <h3>批量设置备注</h3>
+                <div className="batch-form">
+                  <textarea
+                    value={bulkNotes}
+                    onChange={(e) => setBulkNotes(e.target.value)}
+                    placeholder="输入备注内容..."
+                    rows={2}
+                    className="form-input notes-textarea"
+                  />
+                </div>
+                <div className="batch-form">
+                  <div className="radio-group inline">
+                    <label>
+                      <input
+                        type="radio"
+                        value="append"
+                        checked={bulkNotesMode === 'append'}
+                        onChange={(e) => setBulkNotesMode(e.target.value as any)}
+                      />
+                      追加到现有备注
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        value="replace"
+                        checked={bulkNotesMode === 'replace'}
+                        onChange={(e) => setBulkNotesMode(e.target.value as any)}
+                      />
+                      覆盖原有备注
+                    </label>
+                  </div>
+                  <button className="btn btn-primary" onClick={handleBulkNotesChange}>
+                    应用备注
+                  </button>
+                </div>
+              </div>
+
+              <div className="batch-section">
                 <h3>当前标签统计</h3>
                 <div className="tag-stats">
                   {Object.entries(stats.tagCount).length > 0 ? (
@@ -535,6 +635,14 @@ export default function TagEditor() {
           <div className="single-panel">
             <div className="single-toolbar">
               <div className="toolbar-left">
+                {selectedResearchNumber && (
+                  <div className="filter-banner tag-filter-banner">
+                    <span>🔬 研究编号: <strong>{selectedResearchNumber}</strong></span>
+                    <button className="clear-filter-btn" onClick={clearSelectedResearchNumber}>
+                      ×
+                    </button>
+                  </div>
+                )}
                 <div className="search-box">
                   <span>🔍</span>
                   <input
@@ -550,7 +658,7 @@ export default function TagEditor() {
                   className="form-select"
                 >
                   <option value="all">全部患者</option>
-                  {patients.map((p) => (
+                  {getFilteredPatients().map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.patientName} ({p.patientId})
                     </option>

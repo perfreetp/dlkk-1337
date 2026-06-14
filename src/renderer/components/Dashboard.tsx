@@ -13,6 +13,8 @@ export default function Dashboard() {
     setCurrentView,
     setSelectedPatient,
     clearSelectedPatient,
+    setSelectedResearchNumber,
+    clearSelectedResearchNumber,
     runQCCheck,
     pendingTagEditSeriesIds,
     setPendingTagEditSeries,
@@ -104,8 +106,11 @@ export default function Dashboard() {
     : 0;
 
   const handleJumpToSeries = (group: typeof groupedData[0]) => {
+    clearSelectedResearchNumber();
     if (groupMode === 'patient' && group.patientIds.length === 1) {
       setSelectedPatient(group.patientIds[0]);
+    } else if (groupMode === 'researchNumber' && group.key !== '未分配') {
+      setSelectedResearchNumber(group.key);
     } else {
       clearSelectedPatient();
     }
@@ -113,8 +118,11 @@ export default function Dashboard() {
   };
 
   const handleJumpToTags = (group: typeof groupedData[0]) => {
+    clearSelectedResearchNumber();
     if (groupMode === 'patient' && group.patientIds.length === 1) {
       setSelectedPatient(group.patientIds[0]);
+    } else if (groupMode === 'researchNumber' && group.key !== '未分配') {
+      setSelectedResearchNumber(group.key);
     } else {
       clearSelectedPatient();
     }
@@ -122,7 +130,16 @@ export default function Dashboard() {
     setCurrentView('tags');
   };
 
-  const handleJumpToRules = () => {
+  const handleJumpToRules = (group?: typeof groupedData[0]) => {
+    clearSelectedResearchNumber();
+    clearSelectedPatient();
+    if (group) {
+      if (groupMode === 'researchNumber' && group.key !== '未分配') {
+        setSelectedResearchNumber(group.key);
+      } else if (groupMode === 'patient' && group.patientIds.length === 1) {
+          setSelectedPatient(group.patientIds[0]);
+        }
+    }
     runQCCheck();
     setCurrentView('rules');
   };
@@ -195,7 +212,7 @@ export default function Dashboard() {
             <div className="overview-value">{overallStats.review}</div>
             <div className="overview-label">待复核</div>
           </div>
-          <button className="overview-action" onClick={handleJumpToRules}>
+          <button className="overview-action" onClick={() => handleJumpToRules()}>
             规则检查 →
           </button>
         </div>
@@ -234,6 +251,9 @@ export default function Dashboard() {
                     </button>
                     <button className="btn btn-xs" onClick={() => handleJumpToTags(group)}>
                       🏷️ 标签
+                    </button>
+                    <button className="btn btn-xs btn-accent" onClick={() => handleJumpToRules(group)}>
+                      🔍 检查
                     </button>
                   </div>
                 </div>

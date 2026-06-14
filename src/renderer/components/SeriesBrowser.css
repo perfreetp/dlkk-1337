@@ -284,6 +284,17 @@
   background: #f8faff;
 }
 
+.series-card.highlighted {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+  animation: pulse-highlight 1.5s ease-in-out 2;
+}
+
+@keyframes pulse-highlight {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.4); }
+}
+
 .series-card.locked {
   opacity: 0.8;
 }

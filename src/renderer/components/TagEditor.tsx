@@ -8,12 +8,17 @@ export default function TagEditor() {
     getAllSeries,
     selectedSeriesIds,
     selectedPatientId,
+    highlightedSeriesId,
+    pendingTagEditSeriesIds,
     batchUpdateSeries,
     updateSeries,
     currentProject,
     patients,
     setSelectedPatient,
     clearSelectedPatient,
+    setHighlightedSeries,
+    clearPendingTagEditSeries,
+    setCurrentView,
   } = useAppStore();
 
   const [selectedTagTarget, setSelectedTagTarget] = useState<string>('selected');
@@ -35,6 +40,35 @@ export default function TagEditor() {
       setEditingSeriesId(null);
     }
   }, [selectedPatientId]);
+
+  useEffect(() => {
+    if (pendingTagEditSeriesIds && pendingTagEditSeriesIds.length > 0) {
+      setActiveTab('batch');
+      setSelectedTagTarget('selected');
+    }
+  }, [pendingTagEditSeriesIds]);
+
+  useEffect(() => {
+    if (highlightedSeriesId) {
+      setActiveTab('single');
+      const series = getAllSeries().find((s) => s.id === highlightedSeriesId);
+      if (series) {
+        setSingleFilterPatient(series.patientId);
+        setSingleFilterStatus('all');
+        setSingleSearchQuery('');
+        setTimeout(() => {
+          const el = document.getElementById(`tag-row-${highlightedSeriesId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('flash');
+            setTimeout(() => el.classList.remove('flash'), 2000);
+          }
+          setHighlightedSeries(null);
+          setEditingSeriesId(highlightedSeriesId);
+        }, 100);
+      }
+    }
+  }, [highlightedSeriesId]);
 
   const allSeries = useMemo(() => getAllSeries(), [getAllSeries]);
 
@@ -185,6 +219,8 @@ export default function TagEditor() {
 
   const SeriesTagRow = ({ series }: { series: Series }) => {
     const isEditing = editingSeriesId === series.id;
+    const isHighlighted = highlightedSeriesId === series.id;
+    const isPending = pendingTagEditSeriesIds.includes(series.id);
     const [localNotes, setLocalNotes] = useState(series.notes);
     const [localTagInput, setLocalTagInput] = useState('');
 
@@ -212,7 +248,12 @@ export default function TagEditor() {
     };
 
     return (
-      <div className={`tag-row ${series.isLocked ? 'locked' : ''}`}>
+      <div
+        id={`tag-row-${series.id}`}
+        className={`tag-row ${series.isLocked ? 'locked' : ''} ${
+          isHighlighted ? 'highlighted' : ''
+        } ${isPending ? 'pending' : ''}`}
+      >
         <div className="tag-row-header">
           <div className="series-basic">
             <span className="series-name">{series.seriesDescription}</span>
@@ -356,6 +397,27 @@ export default function TagEditor() {
 
         {activeTab === 'batch' ? (
           <div className="batch-panel">
+            {pendingTagEditSeriesIds.length > 0 && (
+              <div className="batch-notice">
+                <span className="notice-icon">💡</span>
+                <span>
+                  已从规则检查带入 <strong>{pendingTagEditSeriesIds.length}</strong> 个待处理样本，
+                  改完后可返回规则检查继续查看问题处理情况
+                </span>
+                <div className="notice-actions">
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => {
+                      clearPendingTagEditSeries();
+                      setCurrentView('rules');
+                    }}
+                  >
+                    🔍 返回规则检查
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="batch-target">
               <h3>操作范围</h3>
               <div className="radio-group">

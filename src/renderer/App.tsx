@@ -3,6 +3,7 @@ import { useAppStore } from './store/appStore';
 import Sidebar from './components/Sidebar';
 import ProjectWindow from './components/ProjectWindow';
 import ImportWindow from './components/ImportWindow';
+import Dashboard from './components/Dashboard';
 import SeriesBrowser from './components/SeriesBrowser';
 import TagEditor from './components/TagEditor';
 import RuleChecker from './components/RuleChecker';
@@ -29,6 +30,8 @@ export default function App() {
         return <ProjectWindow />;
       case 'import':
         return <ImportWindow />;
+      case 'dashboard':
+        return <Dashboard />;
       case 'series':
         return <SeriesBrowser />;
       case 'tags':

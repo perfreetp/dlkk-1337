@@ -13,6 +13,8 @@ export default function RuleChecker() {
     patients,
     setCurrentView,
     setSelectedPatient,
+    navigateToSeries,
+    setPendingTagEditSeries,
   } = useAppStore();
   const [isChecking, setIsChecking] = useState(false);
   const [selectedResult, setSelectedResult] = useState<QCCheckResult | null>(null);
@@ -33,6 +35,17 @@ export default function RuleChecker() {
       if (firstFail) setSelectedResult(firstFail);
     }
   }, [qcResults]);
+
+  useEffect(() => {
+    if (selectedResult) {
+      const stillVisible = filteredResults.some((r) => r.ruleId === selectedResult.ruleId);
+      if (!stillVisible && filteredResults.length > 0) {
+        setSelectedResult(filteredResults[0]);
+      } else if (!stillVisible) {
+        setSelectedResult(null);
+      }
+    }
+  }, [resultFilter]);
 
   const allSeries = getAllSeries();
 
@@ -98,17 +111,16 @@ export default function RuleChecker() {
   };
 
   const goToSeries = (seriesId: string) => {
-    const series = allSeries.find((s) => s.id === seriesId);
-    if (series) {
-      setSelectedPatient(series.patientId);
-      setCurrentView('series');
-    }
+    navigateToSeries(seriesId, 'series');
   };
 
   const goToTagEdit = (seriesId: string) => {
-    const series = allSeries.find((s) => s.id === seriesId);
-    if (series) {
-      setSelectedPatient(series.patientId);
+    navigateToSeries(seriesId, 'tags');
+  };
+
+  const batchEditAffected = () => {
+    if (selectedResult?.affectedItems && selectedResult.affectedItems.length > 0) {
+      setPendingTagEditSeries(selectedResult.affectedItems);
       setCurrentView('tags');
     }
   };
@@ -198,10 +210,28 @@ export default function RuleChecker() {
         <div className="rules-panel">
           <div className="panel-header">
             <h3>质检规则</h3>
+            {resultFilter !== 'all' && (
+              <span className="filter-badge">
+                {resultFilter === 'pass' ? '只看通过' : '只看未通过'}
+                <button
+                  className="filter-badge-close"
+                  onClick={() => setResultFilter('all')}
+                >
+                  ×
+                </button>
+              </span>
+            )}
           </div>
           <div className="rules-list">
             {qcRules.map((rule) => {
               const result = getResultByRule(rule.id);
+              const matchesFilter =
+                resultFilter === 'all' ||
+                (result && resultFilter === 'pass' && result.passed) ||
+                (result && resultFilter === 'fail' && !result.passed);
+
+              if (!matchesFilter) return null;
+
               return (
                 <div
                   key={rule.id}
@@ -241,6 +271,18 @@ export default function RuleChecker() {
                 </div>
               );
             })}
+            {qcRules.filter((rule) => {
+              const result = getResultByRule(rule.id);
+              return (
+                resultFilter === 'all' ||
+                (result && resultFilter === 'pass' && result.passed) ||
+                (result && resultFilter === 'fail' && !result.passed)
+              );
+            }).length === 0 && (
+              <div className="empty-rules">
+                当前筛选条件下没有匹配的规则
+              </div>
+            )}
           </div>
         </div>
 
@@ -317,9 +359,19 @@ export default function RuleChecker() {
 
               {selectedResult.affectedItems && selectedResult.affectedItems.length > 0 ? (
                 <div className="affected-items">
-                  <h5>
-                    受影响序列 ({getFilteredAffectedItems(selectedResult).length} 个)
-                  </h5>
+                  <div className="affected-header">
+                    <h5>
+                      受影响序列 ({getFilteredAffectedItems(selectedResult).length} 个)
+                    </h5>
+                    {getFilteredAffectedItems(selectedResult).length > 0 && (
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={batchEditAffected}
+                      >
+                        ✏️ 批量修改标签
+                      </button>
+                    )}
+                  </div>
                   <div className="items-list scrollable-list">
                     {getFilteredAffectedItems(selectedResult).map((itemId) => {
                       const series = allSeries.find((s) => s.id === itemId);

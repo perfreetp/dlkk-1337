@@ -74,6 +74,7 @@ interface AppState {
   selectedPatientId: string | null;
   selectedStudyId: string | null;
   selectedSeriesIds: string[];
+  highlightedSeriesId: string | null;
   importProgress: ImportProgress;
   qcRules: QCRule[];
   qcResults: QCCheckResult[];
@@ -83,6 +84,7 @@ interface AppState {
   filterStatus: EnrollmentStatus | 'all';
   sortBy: string;
   isDataDirty: boolean;
+  pendingTagEditSeriesIds: string[];
 
   setCurrentView: (view: string) => void;
   createProject: (name: string, description?: string) => void;
@@ -91,6 +93,10 @@ interface AppState {
   setCurrentProject: (project: Project | null) => void;
   saveProject: () => void;
   setDataDirty: (dirty: boolean) => void;
+  navigateToSeries: (seriesId: string, targetView?: 'series' | 'tags') => void;
+  setHighlightedSeries: (seriesId: string | null) => void;
+  setPendingTagEditSeries: (seriesIds: string[]) => void;
+  clearPendingTagEditSeries: () => void;
 
   addPatients: (patients: Patient[]) => void;
   importAndGenerateData: (folderCount: number, startIndex?: number) => Patient[];
@@ -272,6 +278,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedPatientId: null,
   selectedStudyId: null,
   selectedSeriesIds: [],
+  highlightedSeriesId: null,
   importProgress: {
     total: 0,
     current: 0,
@@ -287,10 +294,49 @@ export const useAppStore = create<AppState>((set, get) => ({
   filterStatus: 'all',
   sortBy: 'patientId',
   isDataDirty: false,
+  pendingTagEditSeriesIds: [],
 
   setCurrentView: (view) => set({ currentView: view }),
 
   setDataDirty: (dirty) => set({ isDataDirty: dirty }),
+
+  setHighlightedSeries: (seriesId) => set({ highlightedSeriesId: seriesId }),
+
+  setPendingTagEditSeries: (seriesIds) =>
+    set({ pendingTagEditSeriesIds: seriesIds, selectedSeriesIds: seriesIds }),
+
+  clearPendingTagEditSeries: () => set({ pendingTagEditSeriesIds: [] }),
+
+  navigateToSeries: (seriesId, targetView = 'series') => {
+    const state = get();
+    const series = state.getAllSeries().find((s) => s.id === seriesId);
+    if (!series) return;
+
+    if (targetView === 'tags') {
+      set({
+        selectedPatientId: series.patientId,
+        selectedStudyId: series.studyId,
+        highlightedSeriesId: seriesId,
+        selectedSeriesIds: state.selectedSeriesIds.includes(seriesId)
+          ? state.selectedSeriesIds
+          : [...state.selectedSeriesIds, seriesId],
+        currentView: 'tags',
+        pendingTagEditSeriesIds: [seriesId],
+      });
+    } else {
+      set({
+        selectedPatientId: series.patientId,
+        selectedStudyId: series.studyId,
+        highlightedSeriesId: seriesId,
+        selectedSeriesIds: [seriesId],
+        currentView: 'series',
+      });
+    }
+
+    setTimeout(() => {
+      set({ highlightedSeriesId: null });
+    }, 3000);
+  },
 
   saveProject: () => {
     const state = get();

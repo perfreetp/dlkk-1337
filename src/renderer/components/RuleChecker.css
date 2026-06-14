@@ -66,12 +66,48 @@
 .panel-header {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
 .panel-header h3 {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.filter-badge {
+  background: var(--primary-color);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-badge-close {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.filter-badge-close:hover {
+  opacity: 0.8;
+}
+
+.empty-rules {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .rules-list {
@@ -271,6 +307,19 @@ input:checked + .slider:before {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
+}
+
+.affected-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.affected-header h5 {
+  margin-bottom: 0;
 }
 
 .items-list {

@@ -11,6 +11,7 @@ export default function SeriesBrowser() {
     selectedPatientId,
     selectedStudyId,
     selectedSeriesIds,
+    highlightedSeriesId,
     setSelectedPatient,
     clearSelectedPatient,
     setSelectedStudy,
@@ -26,6 +27,7 @@ export default function SeriesBrowser() {
     getFilteredSeries,
     getAllSeries,
     setCurrentView,
+    setHighlightedSeries,
   } = useAppStore();
 
   const [groupBy, setGroupBy] = useState<GroupBy>('patient');
@@ -126,11 +128,24 @@ export default function SeriesBrowser() {
 
   const SeriesThumbnail = ({ series }: { series: Series }) => {
     const isSelected = selectedSeriesIds.includes(series.id);
+    const isHighlighted = highlightedSeriesId === series.id;
+
+    useEffect(() => {
+      if (isHighlighted) {
+        const el = document.getElementById(`series-card-${series.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(() => setHighlightedSeries(null), 2500);
+      }
+    }, [isHighlighted, series.id]);
+
     return (
       <div
+        id={`series-card-${series.id}`}
         className={`series-card ${isSelected ? 'selected' : ''} ${
           series.isLocked ? 'locked' : ''
-        }`}
+        } ${isHighlighted ? 'highlighted' : ''}`}
         onClick={() => {
           toggleSelectSeries(series.id);
           setSelectedSeriesDetail(series);

@@ -4,6 +4,7 @@ import './Sidebar.css';
 const menuItems = [
   { id: 'project', icon: '📋', label: '项目窗口', key: 'project' },
   { id: 'import', icon: '📥', label: '导入窗口', key: 'import' },
+  { id: 'dashboard', icon: '📊', label: '处理进度', key: 'dashboard' },
   { id: 'series', icon: '🖼️', label: '序列浏览', key: 'series' },
   { id: 'tags', icon: '🏷️', label: '标签编辑', key: 'tags' },
   { id: 'rules', icon: '✅', label: '规则检查', key: 'rules' },
@@ -12,11 +13,13 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
-  const { currentView, setCurrentView, currentProject } = useAppStore();
+  const { currentView, setCurrentView, currentProject, patients, getAllSeries } = useAppStore();
 
   const disabledItems = !currentProject
-    ? ['series', 'tags', 'rules', 'review', 'export']
+    ? ['dashboard', 'series', 'tags', 'rules', 'review', 'export']
     : [];
+
+  const totalSeries = currentProject ? getAllSeries().length : 0;
 
   return (
     <aside className="sidebar">
@@ -49,11 +52,11 @@ export default function Sidebar() {
             <>
               <div className="stat-item">
                 <span className="stat-label">患者数</span>
-                <span className="stat-value">--</span>
+                <span className="stat-value">{patients.length}</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">序列数</span>
-                <span className="stat-value">--</span>
+                <span className="stat-value">{totalSeries}</span>
               </div>
             </>
           )}

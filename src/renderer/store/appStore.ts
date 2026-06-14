@@ -13,6 +13,60 @@ import type {
   ImportProgress,
 } from '../../shared/types';
 
+const STORAGE_KEY = 'dicom-qc-projects';
+const CURRENT_PROJECT_KEY = 'dicom-qc-current-project';
+
+interface ProjectData {
+  project: Project;
+  patients: Patient[];
+  reviewRecords: QCReviewRecord[];
+}
+
+const loadProjectsFromStorage = (): Project[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) {
+      const projectsData: Record<string, Project> = JSON.parse(data);
+      return Object.values(projectsData);
+    }
+  } catch (e) {
+    console.error('Failed to load projects from storage:', e);
+  }
+  return mockProjects;
+};
+
+const saveProjectsToStorage = (projects: Project[]) => {
+  try {
+    const projectsData: Record<string, Project> = {};
+    projects.forEach((p) => {
+      projectsData[p.id] = p;
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projectsData));
+  } catch (e) {
+    console.error('Failed to save projects to storage:', e);
+  }
+};
+
+const loadProjectDataFromStorage = (projectId: string): ProjectData | null => {
+  try {
+    const data = localStorage.getItem(`project-data-${projectId}`);
+    if (data) {
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Failed to load project data from storage:', e);
+  }
+  return null;
+};
+
+const saveProjectDataToStorage = (projectId: string, data: ProjectData) => {
+  try {
+    localStorage.setItem(`project-data-${projectId}`, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save project data to storage:', e);
+  }
+};
+
 interface AppState {
   currentProject: Project | null;
   projects: Project[];
@@ -28,11 +82,15 @@ interface AppState {
   searchQuery: string;
   filterStatus: EnrollmentStatus | 'all';
   sortBy: string;
+  isDataDirty: boolean;
 
   setCurrentView: (view: string) => void;
   createProject: (name: string, description?: string) => void;
   loadProject: (projectId: string) => void;
+  closeProject: () => void;
   setCurrentProject: (project: Project | null) => void;
+  saveProject: () => void;
+  setDataDirty: (dirty: boolean) => void;
 
   addPatients: (patients: Patient[]) => void;
   importAndGenerateData: (folderCount: number, startIndex?: number) => Patient[];
@@ -205,9 +263,11 @@ const generateMockData = (count: number = 12, startIndex: number = 1): Patient[]
   return patients;
 };
 
+const initialProjects = loadProjectsFromStorage();
+
 export const useAppStore = create<AppState>((set, get) => ({
   currentProject: null,
-  projects: mockProjects,
+  projects: initialProjects,
   patients: [],
   selectedPatientId: null,
   selectedStudyId: null,
@@ -226,8 +286,34 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQuery: '',
   filterStatus: 'all',
   sortBy: 'patientId',
+  isDataDirty: false,
 
   setCurrentView: (view) => set({ currentView: view }),
+
+  setDataDirty: (dirty) => set({ isDataDirty: dirty }),
+
+  saveProject: () => {
+    const state = get();
+    if (!state.currentProject) return;
+
+    const updatedProject = {
+      ...state.currentProject,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveProjectDataToStorage(state.currentProject.id, {
+      project: updatedProject,
+      patients: state.patients,
+      reviewRecords: state.reviewRecords,
+    });
+
+    const updatedProjects = state.projects.map((p) =>
+      p.id === state.currentProject!.id ? updatedProject : p
+    );
+    saveProjectsToStorage(updatedProjects);
+
+    set({ currentProject: updatedProject, projects: updatedProjects, isDataDirty: false });
+  },
 
   createProject: (name, description) => {
     const newProject: Project = {
@@ -240,26 +326,66 @@ export const useAppStore = create<AppState>((set, get) => ({
       requiredModalities: [],
       requiredFields: [],
     };
-    set((state) => ({
-      projects: [...state.projects, newProject],
+    const state = get();
+    const updatedProjects = [...state.projects, newProject];
+    saveProjectsToStorage(updatedProjects);
+    saveProjectDataToStorage(newProject.id, {
+      project: newProject,
+      patients: [],
+      reviewRecords: [],
+    });
+    set({
+      projects: updatedProjects,
       currentProject: newProject,
       patients: [],
-    }));
+      reviewRecords: [],
+      isDataDirty: false,
+    });
+  },
+
+  closeProject: () => {
+    const state = get();
+    if (state.isDataDirty && state.currentProject) {
+      get().saveProject();
+    }
+    set({
+      currentProject: null,
+      patients: [],
+      reviewRecords: [],
+      selectedPatientId: null,
+      selectedStudyId: null,
+      selectedSeriesIds: [],
+      isDataDirty: false,
+      currentView: 'project',
+    });
   },
 
   loadProject: (projectId) => {
     const project = get().projects.find((p) => p.id === projectId);
-    if (project) {
-      const mockPatients = generateMockData();
-      set({
-        currentProject: project,
-        patients: mockPatients,
-        selectedPatientId: null,
-        selectedStudyId: null,
-        selectedSeriesIds: [],
-        currentView: 'series',
-      });
+    if (!project) return;
+
+    const savedData = loadProjectDataFromStorage(projectId);
+    let patientsToLoad: Patient[] = [];
+    let reviewRecordsToLoad: QCReviewRecord[] = [];
+
+    if (savedData && savedData.patients.length > 0) {
+      patientsToLoad = savedData.patients;
+      reviewRecordsToLoad = savedData.reviewRecords || [];
+    } else {
+      patientsToLoad = generateMockData();
+      reviewRecordsToLoad = [];
     }
+
+    set({
+      currentProject: project,
+      patients: patientsToLoad,
+      reviewRecords: reviewRecordsToLoad,
+      selectedPatientId: null,
+      selectedStudyId: null,
+      selectedSeriesIds: [],
+      currentView: 'series',
+      isDataDirty: false,
+    });
   },
 
   setCurrentProject: (project) => set({ currentProject: project }),
@@ -268,7 +394,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => {
       const existingIds = new Set(state.patients.map((p) => p.id));
       const toAdd = newPatients.filter((p) => !existingIds.has(p.id));
-      return { patients: [...state.patients, ...toAdd] };
+      if (toAdd.length > 0 && state.currentProject) {
+        setTimeout(() => get().saveProject(), 0);
+      }
+      return { patients: [...state.patients, ...toAdd], isDataDirty: toAdd.length > 0 };
     });
   },
 
@@ -278,7 +407,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newPatients = generateMockData(patientCount, startIndex);
     const existingIds = new Set(state.patients.map((p) => p.id));
     const toAdd = newPatients.filter((p) => !existingIds.has(p.id));
-    set((state) => ({ patients: [...state.patients, ...toAdd] }));
+    set((state) => ({
+      patients: [...state.patients, ...toAdd],
+      isDataDirty: toAdd.length > 0,
+    }));
+    if (toAdd.length > 0) {
+      setTimeout(() => get().saveProject(), 0);
+    }
     return toAdd;
   },
 
@@ -325,7 +460,11 @@ export const useAppStore = create<AppState>((set, get) => ({
           ),
         })),
       })),
+      isDataDirty: true,
     }));
+    if (get().currentProject) {
+      setTimeout(() => get().saveProject(), 100);
+    }
   },
 
   batchUpdateSeries: (seriesIds, updates) => {
@@ -339,7 +478,11 @@ export const useAppStore = create<AppState>((set, get) => ({
           ),
         })),
       })),
+      isDataDirty: true,
     }));
+    if (get().currentProject) {
+      setTimeout(() => get().saveProject(), 100);
+    }
   },
 
   setEnrollmentStatus: (seriesId, status) => {

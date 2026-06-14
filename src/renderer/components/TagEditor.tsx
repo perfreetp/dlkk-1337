@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import type { Series, EnrollmentStatus } from '../../shared/types';
+import type { Series, EnrollmentStatus, Patient } from '../../shared/types';
 import './TagEditor.css';
 
 export default function TagEditor() {
@@ -11,6 +11,9 @@ export default function TagEditor() {
     batchUpdateSeries,
     updateSeries,
     currentProject,
+    patients,
+    setSelectedPatient,
+    clearSelectedPatient,
   } = useAppStore();
 
   const [selectedTagTarget, setSelectedTagTarget] = useState<string>('selected');
@@ -22,12 +25,29 @@ export default function TagEditor() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [singleFilterStatus, setSingleFilterStatus] = useState<string>('all');
+  const [singleFilterPatient, setSingleFilterPatient] = useState<string>('all');
   const [singleSearchQuery, setSingleSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (selectedPatientId) {
+      setSingleFilterPatient(selectedPatientId);
+      setCurrentPage(1);
+      setEditingSeriesId(null);
+    }
+  }, [selectedPatientId]);
 
   const allSeries = useMemo(() => getAllSeries(), [getAllSeries]);
 
+  const getPatientById = (id: string): Patient | undefined => {
+    return patients.find((p) => p.id === id);
+  };
+
   const filteredSingleSeries = useMemo(() => {
     let result = allSeries;
+
+    if (singleFilterPatient !== 'all') {
+      result = result.filter((s) => s.patientId === singleFilterPatient);
+    }
 
     if (singleFilterStatus !== 'all') {
       result = result.filter((s) => s.enrollmentStatus === singleFilterStatus);
@@ -44,7 +64,7 @@ export default function TagEditor() {
     }
 
     return result;
-  }, [allSeries, singleFilterStatus, singleSearchQuery]);
+  }, [allSeries, singleFilterPatient, singleFilterStatus, singleSearchQuery]);
 
   const totalPages = Math.ceil(filteredSingleSeries.length / pageSize);
   const paginatedSeries = useMemo(() => {
@@ -61,6 +81,17 @@ export default function TagEditor() {
     setSingleFilterStatus(status);
     setCurrentPage(1);
     setEditingSeriesId(null);
+  };
+
+  const handlePatientFilterChange = (patientId: string) => {
+    setSingleFilterPatient(patientId);
+    setCurrentPage(1);
+    setEditingSeriesId(null);
+    if (patientId !== 'all') {
+      setSelectedPatient(patientId);
+    } else {
+      clearSelectedPatient();
+    }
   };
 
   const handleSearchChange = (query: string) => {
@@ -451,6 +482,18 @@ export default function TagEditor() {
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
                 </div>
+                <select
+                  value={singleFilterPatient}
+                  onChange={(e) => handlePatientFilterChange(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="all">全部患者</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.patientName} ({p.patientId})
+                    </option>
+                  ))}
+                </select>
                 <select
                   value={singleFilterStatus}
                   onChange={(e) => handleFilterChange(e.target.value)}

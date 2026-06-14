@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { Series, Patient, Study } from '../../shared/types';
 import './SeriesBrowser.css';
@@ -25,11 +25,16 @@ export default function SeriesBrowser() {
     setSortBy,
     getFilteredSeries,
     getAllSeries,
+    setCurrentView,
   } = useAppStore();
 
   const [groupBy, setGroupBy] = useState<GroupBy>('patient');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedSeriesDetail, setSelectedSeriesDetail] = useState<Series | null>(null);
+
+  useEffect(() => {
+    setSelectedSeriesDetail(null);
+  }, [selectedPatientId]);
 
   const filteredSeries = useMemo(() => {
     return getFilteredSeries();
@@ -267,6 +272,12 @@ export default function SeriesBrowser() {
               )}
             </span>
             <div className="selection-actions">
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => setCurrentView('tags')}
+              >
+                ✏️ 编辑标签
+              </button>
               <button className="btn btn-sm" onClick={selectAllSeries}>
                 全选
               </button>
@@ -381,6 +392,15 @@ export default function SeriesBrowser() {
                   🔒 此序列已锁定，不可修改
                 </div>
               )}
+
+              <div className="detail-actions">
+                <button
+                  className="btn btn-primary btn-block"
+                  onClick={() => setCurrentView('tags')}
+                >
+                  ✏️ 编辑此序列标签
+                </button>
+              </div>
             </div>
           </div>
         )}

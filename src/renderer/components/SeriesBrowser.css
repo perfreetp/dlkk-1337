@@ -500,6 +500,16 @@
   text-align: center;
 }
 
+.detail-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-block {
+  width: 100%;
+}
+
 .qc-status {
   font-size: 12px;
   font-weight: 500;

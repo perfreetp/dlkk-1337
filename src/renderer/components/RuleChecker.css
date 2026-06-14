@@ -358,6 +358,108 @@ input:checked + .slider:before {
   color: var(--text-muted);
 }
 
+.detail-filters {
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-tertiary);
+  padding: 3px;
+  border-radius: var(--border-radius);
+}
+
+.filter-tab {
+  padding: 4px 12px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.filter-tab:hover {
+  color: var(--text-primary);
+}
+
+.filter-tab.active {
+  background: white;
+  color: var(--primary-color);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-select-sm {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.scrollable-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.item-row.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.item-row.clickable:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary-color);
+}
+
+.item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.btn-xs {
+  padding: 3px 8px;
+  font-size: 11px;
+  min-width: auto;
+}
+
+.empty-filter {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius);
+}
+
+.empty-items {
+  text-align: center;
+  padding: 32px;
+  color: var(--success-color);
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .empty-detail {
   flex: 1;
   display: flex;

@@ -11,7 +11,7 @@ import ExportCenter from './components/ExportCenter';
 import './styles/App.css';
 
 export default function App() {
-  const { currentView, currentProject } = useAppStore();
+  const { currentView, currentProject, isDataDirty, saveProject, closeProject } = useAppStore();
 
   const renderContent = () => {
     if (!currentProject && currentView !== 'project' && currentView !== 'import') {
@@ -54,10 +54,21 @@ export default function App() {
             {currentProject && (
               <span className="project-badge">
                 当前项目: {currentProject.name}
+                {isDataDirty && <span className="dirty-dot" title="有未保存的修改">●</span>}
               </span>
             )}
           </div>
           <div className="header-actions">
+            {currentProject && (
+              <>
+                <button className="btn btn-sm" onClick={saveProject}>
+                  💾 保存
+                </button>
+                <button className="btn btn-sm" onClick={closeProject}>
+                  关闭项目
+                </button>
+              </>
+            )}
             <span className="version-badge">v1.0.0</span>
           </div>
         </header>
